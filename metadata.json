@@ -1,0 +1,6 @@
+{
+  "name": "Massaget",
+  "description": "A simple, modern, private messaging platform. Connect. Chat. Share.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

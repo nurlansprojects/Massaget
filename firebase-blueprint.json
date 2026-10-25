@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 64 },
+        "username": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_]{3,30}$" },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "bio": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastSeenAt": { "type": "string", "format": "date-time" },
+        "isOnline": { "type": "boolean" },
+        "themePreference": { "type": "string", "enum": ["light", "dark", "system"] },
+        "chatBackground": { "type": "string", "maxLength": 64 },
+        "textSize": { "type": "string", "enum": ["small", "medium", "large"] }
+      },
+      "required": ["uid", "displayName"]
+    },
+    "UsernameRecord": {
+      "title": "UsernameRecord",
+      "description": "Unique username registry record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_]{3,30}$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Chat conversation between participants",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "participantUids": { "type": "array", "description": "Array of participant UIDs" },
+        "participantMap": { "type": "object", "description": "Quick lookup for participant details" },
+        "lastMessage": { "type": "object", "description": "Last message preview snippet" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "participantUids"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Message within a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "senderUid": { "type": "string", "maxLength": 128 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "type": { "type": "string", "enum": ["text", "image"] },
+        "imageUrl": { "type": "string", "maxLength": 1000000 },
+        "readBy": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "conversationId", "senderUid", "type"]
+    },
+    "BlockedUser": {
+      "title": "BlockedUser",
+      "description": "Record of a blocked user",
+      "type": "object",
+      "properties": {
+        "blockedUid": { "type": "string", "maxLength": 128 },
+        "blockedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["blockedUid"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public and private profile of a user"
+    },
+    "/usernames/{username}": {
+      "schema": { "$ref": "#/entities/UsernameRecord" },
+      "description": "Global unique username reservations"
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "One-on-one and group conversation threads"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages posted in a specific conversation"
+    },
+    "/users/{uid}/blockedUsers/{blockedUid}": {
+      "schema": { "$ref": "#/entities/BlockedUser" },
+      "description": "List of users blocked by a specific user"
+    }
+  }
+}

@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Test connection doc
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // User profiles: readable by signed-in users for discovery/display, writable only by owner
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId)
+                    && incoming().uid == request.auth.uid
+                    && incoming().displayName is string
+                    && incoming().displayName.size() <= 64;
+      allow update: if isOwner(userId)
+                    && incoming().uid == existing().uid
+                    && incoming().displayName is string
+                    && incoming().displayName.size() <= 64;
+      allow delete: if isOwner(userId);
+
+      // Blocked users subcollection
+      match /blockedUsers/{blockedId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Username unique registry
+    match /usernames/{username} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn()
+                    && incoming().uid == request.auth.uid
+                    && username.size() <= 32;
+      allow update: if isSignedIn()
+                    && existing().uid == request.auth.uid
+                    && incoming().uid == request.auth.uid;
+      allow delete: if isSignedIn() && existing().uid == request.auth.uid;
+    }
+
+    // Conversations: only accessible to participants
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && (resource == null || request.auth.uid in resource.data.participantUids);
+      allow list: if isSignedIn() && request.auth.uid in resource.data.participantUids;
+      allow create: if isSignedIn()
+                    && request.auth.uid in incoming().participantUids
+                    && incoming().participantUids.size() <= 10;
+      allow update: if isSignedIn()
+                    && request.auth.uid in existing().participantUids;
+      allow delete: if isSignedIn()
+                    && request.auth.uid in existing().participantUids;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow get: if isSignedIn()
+                   && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids;
+        allow list: if isSignedIn()
+                    && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids;
+        allow create: if isSignedIn()
+                      && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids
+                      && incoming().senderUid == request.auth.uid
+                      && incoming().content is string
+                      && incoming().content.size() <= 2000;
+        allow update: if isSignedIn()
+                      && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids;
+        allow delete: if isSignedIn()
+                      && existing().senderUid == request.auth.uid;
+      }
+    }
+  }
+}
