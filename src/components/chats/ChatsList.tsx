@@ -142,9 +142,13 @@ export const ChatsList: React.FC<ChatsListProps> = ({
             const isUnread =
               conv.lastMessage &&
               conv.lastMessage.senderUid !== currentUser.uid &&
+              conv.lastMessage.readStatus !== 'seen' &&
               (!conv.lastMessage.readBy || !conv.lastMessage.readBy.includes(currentUser.uid));
 
             const isLastMessageFromMe = conv.lastMessage?.senderUid === currentUser.uid;
+            const isLastMessageSeen =
+              conv.lastMessage?.readStatus === 'seen' ||
+              Boolean(conv.lastMessage?.readBy && conv.lastMessage.readBy.length > 1);
 
             return (
               <div
@@ -175,11 +179,11 @@ export const ChatsList: React.FC<ChatsListProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1 min-w-0 text-xs">
                       {isLastMessageFromMe && (
-                        <span className="text-neutral-400 shrink-0">
-                          {conv.lastMessage?.readBy && conv.lastMessage.readBy.length > 1 ? (
-                            <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="shrink-0 inline-flex items-center">
+                          {isLastMessageSeen ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-sky-500 stroke-[2.2]" />
                           ) : (
-                            <Check className="w-3.5 h-3.5" />
+                            <Check className="w-3.5 h-3.5 text-neutral-400 opacity-70" />
                           )}
                         </span>
                       )}

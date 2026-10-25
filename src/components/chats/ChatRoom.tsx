@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Conversation, Message, UserProfile } from '../../types';
-import { subscribeMessages, sendMessage, markMessageRead } from '../../firebase/chatService';
+import { subscribeMessages, sendMessage, markMessagesAsSeen } from '../../firebase/chatService';
 import { Avatar } from '../common/Avatar';
 import { Modal } from '../common/Modal';
 import {
@@ -67,12 +67,13 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     const unsubscribe = subscribeMessages(conversation.id, (incomingMessages) => {
       setMessages(incomingMessages);
 
-      // Auto mark unread messages as read
-      incomingMessages.forEach((msg) => {
-        if (msg.senderUid !== currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))) {
-          markMessageRead(conversation.id, msg.id, currentUser.uid);
-        }
-      });
+      // Auto mark messages from the other user as seen
+      const unreadFromOther = incomingMessages.filter(
+        (msg) => msg.senderUid !== currentUser.uid && msg.readStatus !== 'seen'
+      );
+      if (unreadFromOther.length > 0) {
+        markMessagesAsSeen(conversation.id, unreadFromOther, currentUser.uid);
+      }
     });
 
     return () => unsubscribe();
@@ -320,7 +321,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         ) : (
           messages.map((msg) => {
             const isMe = msg.senderUid === currentUser.uid;
-            const isRead = msg.readBy && msg.readBy.length > 1;
+            const isSeen = msg.readStatus === 'seen' || (msg.readBy && msg.readBy.length > 1);
 
             return (
               <div
@@ -363,11 +364,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   >
                     <span>{formatMessageTime(msg.createdAt)}</span>
                     {isMe && (
-                      <span>
-                        {isRead ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-blue-400 dark:text-blue-600" />
+                      <span title={isSeen ? 'Seen' : 'Sent'} className="inline-flex items-center">
+                        {isSeen ? (
+                          <CheckCheck className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 stroke-[2.2]" />
                         ) : (
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5 opacity-70" />
                         )}
                       </span>
                     )}

@@ -8,6 +8,7 @@ import {
   where,
   onSnapshot,
   arrayUnion,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './config';
 import { handleFirestoreError, OperationType } from './errors';
@@ -163,6 +164,7 @@ export async function sendMessage(
     type,
     ...(imageUrl ? { imageUrl } : {}),
     readBy: [senderUid],
+    readStatus: 'sent',
     createdAt: now,
   };
 
@@ -183,6 +185,7 @@ export async function sendMessage(
         createdAt: now,
         type,
         readBy: [senderUid],
+        readStatus: 'sent',
       },
       updatedAt: now,
     });
@@ -193,6 +196,53 @@ export async function sendMessage(
   return messageDoc;
 }
 
+export async function markMessagesAsSeen(
+  conversationId: string,
+  messagesToMark: Message[],
+  currentUid: string
+): Promise<void> {
+  if (!messagesToMark.length) return;
+
+  const batch = writeBatch(db);
+  let updatedAny = false;
+
+  for (const msg of messagesToMark) {
+    if (msg.senderUid !== currentUid && msg.readStatus !== 'seen') {
+      const msgRef = doc(db, 'conversations', conversationId, 'messages', msg.id);
+      batch.update(msgRef, {
+        readStatus: 'seen',
+        readBy: arrayUnion(currentUid),
+      });
+      updatedAny = true;
+    }
+  }
+
+  if (updatedAny) {
+    try {
+      await batch.commit();
+    } catch (error) {
+      console.warn('Batch mark messages seen error:', error);
+    }
+
+    // Also update conversation's lastMessage if from other user
+    try {
+      const convRef = doc(db, 'conversations', conversationId);
+      const snap = await getDoc(convRef);
+      if (snap.exists()) {
+        const conv = snap.data() as Conversation;
+        if (conv.lastMessage && conv.lastMessage.senderUid !== currentUid && conv.lastMessage.readStatus !== 'seen') {
+          await updateDoc(convRef, {
+            'lastMessage.readStatus': 'seen',
+            'lastMessage.readBy': arrayUnion(currentUid),
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Could not update conversation lastMessage seen status:', e);
+    }
+  }
+}
+
 export async function markMessageRead(
   conversationId: string,
   messageId: string,
@@ -201,10 +251,10 @@ export async function markMessageRead(
   const path = `conversations/${conversationId}/messages/${messageId}`;
   try {
     await updateDoc(doc(db, 'conversations', conversationId, 'messages', messageId), {
+      readStatus: 'seen',
       readBy: arrayUnion(currentUid),
     });
   } catch (error) {
-    // Non-blocking
     console.warn('Failed to mark message read:', error);
   }
 }

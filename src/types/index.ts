@@ -21,6 +21,7 @@ export interface Message {
   type: 'text' | 'image';
   imageUrl?: string;
   readBy: string[];
+  readStatus?: 'sent' | 'seen';
   createdAt: string;
 }
 
@@ -42,6 +43,7 @@ export interface Conversation {
     createdAt: string;
     type: 'text' | 'image';
     readBy?: string[];
+    readStatus?: 'sent' | 'seen';
   };
   createdAt: string;
   updatedAt: string;

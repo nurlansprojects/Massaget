@@ -18,7 +18,13 @@ export const WelcomeScreen: React.FC = () => {
     } catch (err: unknown) {
       console.error('Sign-in error:', err);
       const msg = err instanceof Error ? err.message : 'Google sign-in could not be completed.';
-      setAuthError(msg.includes('popup') ? 'Sign-in popup was cancelled or blocked.' : msg);
+      if (msg.includes('network-request-failed')) {
+        setAuthError('Connection failed. If you have an ad-blocker or tracking protection enabled, please pause it or try in a private window.');
+      } else if (msg.includes('popup')) {
+        setAuthError('Sign-in popup was cancelled or blocked by your browser.');
+      } else {
+        setAuthError(msg);
+      }
     } finally {
       setIsSigningIn(false);
     }
@@ -70,6 +76,7 @@ export const WelcomeScreen: React.FC = () => {
 
         {/* Primary Action Button: Continue with Google */}
         <button
+          type="button"
           onClick={handleGoogleSignIn}
           disabled={loading || isSigningIn}
           className="w-full py-4 px-6 rounded-full bg-white text-black font-semibold text-sm sm:text-base flex items-center justify-center gap-3 shadow-[0_4px_24px_rgba(255,255,255,0.18)] hover:bg-neutral-100 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 cursor-pointer"
